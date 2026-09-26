@@ -6,7 +6,7 @@
   <title>Provider dashboard | QuickFix Pune</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
-<body data-page="provider-dashboard">
+<body data-page="provider-dashboard" data-auth-role="PROVIDER">
   <header class="topbar">
     <a class="brand" href="/provider"><span class="brand-mark">Q</span><span>QuickFix <b>Provider</b></span></a>
     <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-menu" aria-label="Open navigation">Menu</button>
@@ -15,7 +15,7 @@
       <a href="/provider-requests.html">Messages</a><a href="/placeholder.html?page=My%20Profile">My Profile</a>
       <a href="/provider#availability">Availability</a><a href="/placeholder.html?page=Verification%20Status">Verification Status</a>
       <a href="/placeholder.html?page=Reviews">Reviews</a><a href="/placeholder.html?page=Help%20%26%20Support">Help &amp; Support</a>
-      <button type="button" class="menu-link" data-logout-provider>Switch provider</button>
+      <button type="button" class="menu-link" data-logout-provider>Sign out</button>
     </nav>
   </header>
   <main class="page-wrap">
@@ -24,7 +24,7 @@
       <a class="button button-quiet" href="/provider-requests.html">View requests <span aria-hidden="true">→</span></a>
     </section>
 
-    <section class="panel identity-panel">
+    <section class="panel identity-panel" hidden>
       <div><h2>Local testing profile</h2><p class="muted">Select the provider ID used by this browser. This development identity is stored locally.</p></div>
       <form id="provider-identity-form" class="identity-form">
         <label for="provider-id">Provider ID</label>

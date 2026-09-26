@@ -1,4 +1,5 @@
-(() => {
+(async () => {
+  await window.QF.ready;
   const { api, escapeHtml, getProviderId, setProviderId } = window.QF;
   const dashboard = document.getElementById('provider-dashboard-content');
   const requestsList = document.getElementById('provider-requests');
@@ -7,7 +8,27 @@
 
   if (!dashboard && !requestsList) return;
 
-  const initialProviderId = getProviderId() || '1';
+  const authenticatedProvider = window.QF.authenticationEnabled
+    ? await window.QF.requireRole('PROVIDER')
+    : null;
+  if (window.QF.authenticationEnabled && !authenticatedProvider) return;
+
+  if (window.QF.authenticationEnabled && authenticatedProvider.verification_status !== 'VERIFIED') {
+    const loading = document.getElementById('provider-loading');
+    if (loading) loading.hidden = true;
+    const message = `Your provider account is ${String(authenticatedProvider.verification_status || 'PENDING').toLowerCase()}. Provider tools will be available after verification.`;
+    showError(message);
+    if (requestsList) {
+      requestsList.innerHTML = `<div class="empty-state">${escapeHtml(message)}</div>`;
+    }
+    return;
+  }
+
+  const identityPanel = identityForm?.closest('.identity-panel');
+  if (identityPanel) {
+    identityPanel.hidden = window.QF.authenticationEnabled;
+  }
+  const initialProviderId = authenticatedProvider?.id || getProviderId() || '1';
   if (identityInput) identityInput.value = initialProviderId;
 
   if (identityForm && identityInput) {
@@ -38,7 +59,8 @@
   loadProvider();
 
   async function loadProvider() {
-    const providerId = getProviderId() || identityInput?.value.trim() || '1';
+    const providerId = authenticatedProvider?.id ||
+      getProviderId() || identityInput?.value.trim() || '1';
     if (!providerId) {
       showError('Enter a provider ID to load your workspace.');
       return;
@@ -183,4 +205,12 @@
       ? ''
       : date.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
   }
-})();
+})().catch(error => {
+  console.error('[UI] Provider page could not initialize:', error.message);
+  const message = 'QuickFix could not verify this provider session. Please sign in again.';
+  const errorElement = document.getElementById('provider-error');
+  if (errorElement) {
+    errorElement.textContent = message;
+    errorElement.hidden = false;
+  }
+});

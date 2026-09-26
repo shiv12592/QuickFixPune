@@ -2,9 +2,12 @@
   const customerIdKey = 'quickfix.customerId';
   const customerNameKey = 'quickfix.customerName';
   const providerIdKey = 'quickfix.providerId';
+  let authenticatedIdentity = null;
+  let authRequired = false;
 
   async function api(url, options = {}) {
     const response = await fetch(url, {
+      credentials: 'include',
       ...options,
       headers: {
         ...(options.body ? { 'Content-Type': 'application/json' } : {}),
@@ -12,11 +15,13 @@
       }
     });
     const data = await response.json();
-
     if (!response.ok) {
-      throw new Error(data.message || 'The request could not be completed.');
+      const error = new Error(data.message || 'The request could not be completed.');
+      error.status = response.status;
+      error.code = data.code;
+      error.retryAfter = response.headers.get('retry-after');
+      throw error;
     }
-
     return data;
   }
 
@@ -31,6 +36,11 @@
   }
 
   function getCustomer() {
+    if (authRequired) {
+      return authenticatedIdentity?.role === 'CUSTOMER'
+        ? { id: authenticatedIdentity.id, name: authenticatedIdentity.name }
+        : { id: null, name: null };
+    }
     return {
       id: localStorage.getItem(customerIdKey),
       name: localStorage.getItem(customerNameKey)
@@ -38,26 +48,75 @@
   }
 
   function setCustomer(customer) {
+    if (authRequired) return;
     localStorage.setItem(customerIdKey, String(customer.id));
     localStorage.setItem(customerNameKey, String(customer.name));
   }
 
   function getProviderId() {
-    return localStorage.getItem(providerIdKey);
+    return authRequired
+      ? authenticatedIdentity?.role === 'PROVIDER' ? authenticatedIdentity.id : null
+      : localStorage.getItem(providerIdKey);
   }
 
   function setProviderId(providerId) {
-    localStorage.setItem(providerIdKey, String(providerId));
+    if (!authRequired) localStorage.setItem(providerIdKey, String(providerId));
   }
 
-  window.QF = {
+  function loginUrl(role) {
+    const currentPath = `${window.location.pathname}${window.location.search}`;
+    const params = new URLSearchParams({
+      role: role.toLowerCase(),
+      next: currentPath
+    });
+    return `/login?${params}`;
+  }
+
+  async function requireRole(role) {
+    if (!authRequired) return null;
+    if (!authenticatedIdentity) {
+      try {
+        const result = await api('/api/auth/me');
+        authenticatedIdentity = result.user;
+      } catch (error) {
+        if (error.status !== 401) throw error;
+      }
+    }
+    if (!authenticatedIdentity || authenticatedIdentity.role !== role) {
+      window.location.assign(loginUrl(role));
+      return null;
+    }
+    return authenticatedIdentity;
+  }
+
+  const QF = {
     api,
     escapeHtml,
     getCustomer,
     setCustomer,
     getProviderId,
-    setProviderId
+    setProviderId,
+    requireRole,
+    identity: null,
+    authenticationEnabled: false,
+    ready: null
   };
+  window.QF = QF;
+
+  QF.ready = api('/api/auth/status').then(async status => {
+    authRequired = Boolean(status.authenticationEnabled);
+    QF.authenticationEnabled = authRequired;
+    if (authRequired) {
+      localStorage.removeItem(customerIdKey);
+      localStorage.removeItem(customerNameKey);
+      localStorage.removeItem(providerIdKey);
+      const role = document.body.dataset.authRole;
+      if (role) {
+        authenticatedIdentity = await requireRole(role.toUpperCase());
+        QF.identity = authenticatedIdentity;
+      }
+    }
+  });
 
   document.querySelectorAll('.menu-toggle').forEach(button => {
     button.addEventListener('click', () => {
@@ -78,10 +137,22 @@
     }
   }
 
-  document.querySelectorAll('[data-logout-provider]').forEach(button => {
-    button.addEventListener('click', () => {
-      localStorage.removeItem(providerIdKey);
-      window.location.assign('/provider');
+  document.querySelectorAll('[data-logout-provider], [data-logout]').forEach(button => {
+    button.addEventListener('click', async () => {
+      try {
+        if (QF.authenticationEnabled) {
+          await api('/api/auth/logout', { method: 'POST' });
+        } else {
+          localStorage.removeItem(providerIdKey);
+          localStorage.removeItem(customerIdKey);
+          localStorage.removeItem(customerNameKey);
+        }
+        window.location.assign(QF.authenticationEnabled
+          ? '/login'
+          : button.hasAttribute('data-logout-provider') ? '/provider' : '/customer');
+      } catch (error) {
+        button.textContent = error.message;
+      }
     });
   });
 })();

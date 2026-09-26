@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node server/server.js",
     "dev": "nodemon server/server.js",
+    "test": "node --test server/auth/auth.test.js",
     "db:migrate": "node-pg-migrate up --envPath .env",
     "db:rollback": "node-pg-migrate down --envPath .env",
     "db:import-json": "node server/scripts/import-json.js",
@@ -19,6 +20,7 @@
   "dependencies": {
     "dotenv": "^18.0.4",
     "express": "^5.2.1",
+    "helmet": "^8.3.0",
     "pg": "^8.23.0",
     "socket.io": "^4.8.4"
   },
@@ -26,5 +28,8 @@
     "node-pg-migrate": "^9.0.0",
     "nodemon": "^3.1.14",
     "socket.io-client": "^4.8.4"
+  },
+  "engines": {
+    "node": ">=22.12.0 <23"
   }
 }

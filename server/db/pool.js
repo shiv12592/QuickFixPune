@@ -15,7 +15,7 @@ const pool = new Pool({
 });
 
 pool.on('error', error => {
-  console.error('[Database] Unexpected idle client error:', error.message);
+  console.error('[Database] Unexpected idle client error');
 });
 
 async function withTransaction(callback) {

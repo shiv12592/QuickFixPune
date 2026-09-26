@@ -1,4 +1,5 @@
-(() => {
+(async () => {
+  await window.QF.ready;
   const { api, setProviderId } = window.QF;
   const form = document.getElementById('provider-registration-form');
   const feedback = document.getElementById('registration-feedback');
@@ -36,8 +37,17 @@
           pincode
         })
       });
-      setProviderId(result.provider.id);
-      showFeedback('Registration submitted. Your profile is pending verification.', false);
+      if (window.QF.authenticationEnabled) {
+        dashboardLink.href = '/login?role=provider';
+        dashboardLink.textContent = 'Sign in after verification';
+        showFeedback(
+          'Registration submitted. Sign in with this mobile number after your profile is verified.',
+          false
+        );
+      } else {
+        setProviderId(result.provider.id);
+        showFeedback('Registration submitted. Your profile is pending verification.', false);
+      }
       dashboardLink.hidden = false;
       form.reset();
     } catch (error) {
@@ -53,4 +63,6 @@
     feedback.classList.toggle('feedback-error', isError);
     feedback.hidden = false;
   }
-})();
+})().catch(error => {
+  console.error('[UI] Provider registration could not initialize:', error.message);
+});

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in | QuickFix Pune</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-page="login">
+  <header class="topbar">
+    <a class="brand" href="/customer"><span class="brand-mark">Q</span><span>QuickFix <b>Pune</b></span></a>
+    <a class="text-link" href="/provider-register.html">Register as a provider</a>
+  </header>
+  <main class="page-wrap narrow-wrap">
+    <a class="back-link" href="/customer">← Customer marketplace</a>
+    <section class="panel request-panel">
+      <p class="eyebrow">SECURE SIGN IN</p>
+      <h1>Sign in to QuickFix</h1>
+      <p class="muted">Use your mobile number to access your existing QuickFix account.</p>
+      <form id="login-form">
+        <div class="field">
+          <label for="account-role">Account type</label>
+          <select id="account-role" name="role" required>
+            <option value="customer">Customer</option>
+            <option value="provider">Provider</option>
+          </select>
+        </div>
+        <div class="field" id="name-field">
+          <label for="full-name">Full name <span class="optional">new customers only</span></label>
+          <input id="full-name" name="fullName" maxlength="100" autocomplete="name">
+        </div>
+        <div class="field">
+          <label for="mobile">Mobile number</label>
+          <input id="mobile" name="mobile" type="tel" inputmode="numeric" maxlength="14" autocomplete="tel" required placeholder="10-digit Indian mobile number">
+        </div>
+        <button id="request-otp" class="button button-primary full-button" type="submit">Send OTP</button>
+      </form>
+      <form id="verify-form" hidden>
+        <div class="field">
+          <label for="otp">6-digit OTP</label>
+          <input id="otp" name="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required>
+        </div>
+        <div id="login-feedback" class="feedback" role="status" aria-live="polite" hidden></div>
+        <button id="verify-otp" class="button button-primary full-button" type="submit">Verify and sign in</button>
+        <button id="resend-otp" class="button button-secondary full-button" type="button" disabled>Resend OTP</button>
+      </form>
+      <div id="login-feedback-initial" class="feedback" role="status" aria-live="polite" hidden></div>
+    </section>
+  </main>
+  <script src="/js/app.js" defer></script>
+  <script src="/js/auth.js" defer></script>
+</body>
+</html>

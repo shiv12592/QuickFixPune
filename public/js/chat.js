@@ -1,7 +1,14 @@
-(() => {
+(async () => {
+  await window.QF.ready;
   const { api, getCustomer, getProviderId } = window.QF;
   const userType = document.body.dataset.userType;
-  const user = userType === 'CUSTOMER' ? getCustomer() : { id: getProviderId() };
+  const identity = window.QF.authenticationEnabled
+    ? await window.QF.requireRole(userType)
+    : null;
+  if (window.QF.authenticationEnabled && !identity) return;
+  const user = identity || (
+    userType === 'CUSTOMER' ? getCustomer() : { id: getProviderId() }
+  );
   const conversationId = new URLSearchParams(window.location.search).get('conversationId');
   const list = document.getElementById('messages');
   const input = document.getElementById('message-input');
@@ -28,13 +35,19 @@
   if (typeof window.io === 'function') {
     socket = window.io();
     socket.on('connect', () => {
-      socket.emit('join_conversation', {
-        conversationId,
-        userType,
-        userId: user.id
-      });
+      socket.emit('join_conversation', window.QF.authenticationEnabled
+        ? { conversationId }
+        : { conversationId, userType, userId: user.id });
     });
-    socket.on('connect_error', () => {
+    socket.on('connect_error', error => {
+      if (window.QF.authenticationEnabled && /auth/i.test(error.message)) {
+        const params = new URLSearchParams({
+          role: userType.toLowerCase(),
+          next: `${window.location.pathname}${window.location.search}`
+        });
+        window.location.assign(`/login?${params}`);
+        return;
+      }
       showError('Live chat is reconnecting. Check that the QuickFix server is running.');
     });
     socket.on('conversation_joined', () => clearError());
@@ -79,11 +92,12 @@
   loadConversation();
 
   async function loadConversation() {
-    const params = new URLSearchParams({ userType, userId: String(user.id) });
     try {
-      const data = await api(
-        `/api/messages/conversations/${encodeURIComponent(conversationId)}/messages?${params}`
-      );
+      const endpoint = `/api/messages/conversations/${encodeURIComponent(conversationId)}/messages`;
+      const suffix = window.QF.authenticationEnabled
+        ? ''
+        : `?${new URLSearchParams({ userType, userId: String(user.id) })}`;
+      const data = await api(`${endpoint}${suffix}`);
       const conversation = data.conversation;
       document.getElementById('chat-title').textContent =
         userType === 'CUSTOMER'
@@ -133,7 +147,14 @@
 
     sending = true;
     pendingMessageText = message;
-    socket.emit('send_message', { conversationId, message });
+    socket.emit('send_message', window.QF.authenticationEnabled
+      ? { conversationId, message }
+      : {
+        conversationId,
+        message,
+        senderType: userType,
+        senderId: user.id
+      });
     input.value = '';
     input.style.height = '';
     stopTyping();
@@ -195,7 +216,9 @@
     try {
       await api(`/api/messages/conversations/${encodeURIComponent(conversationId)}/read`, {
         method: 'POST',
-        body: JSON.stringify({ userType, userId: user.id })
+        body: JSON.stringify(window.QF.authenticationEnabled
+          ? {}
+          : { userType, userId: user.id })
       });
     } catch (readError) {
       showError(readError.message);
@@ -211,4 +234,11 @@
     error.textContent = '';
     error.hidden = true;
   }
-})();
+})().catch(error => {
+  console.error('[UI] Chat could not initialize:', error.message);
+  const errorElement = document.getElementById('chat-error');
+  if (errorElement) {
+    errorElement.textContent = 'QuickFix could not verify this session. Please sign in again.';
+    errorElement.hidden = false;
+  }
+});

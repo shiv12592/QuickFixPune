@@ -1,4 +1,5 @@
-(() => {
+(async () => {
+  await window.QF.ready;
   const { api, escapeHtml, getCustomer, setCustomer } = window.QF;
 
   const searchForm = document.getElementById('provider-search');
@@ -91,12 +92,16 @@
 
   const requestForm = document.getElementById('request-form');
   if (requestForm) {
+    if (window.QF.authenticationEnabled) {
+      const customer = await window.QF.requireRole('CUSTOMER');
+      if (!customer) return;
+    }
     loadProviderForRequest();
-    const customer = getCustomer();
+    let customer = getCustomer();
     const customerFields = document.getElementById('customer-details-fields');
-    customerFields.hidden = Boolean(customer.id);
+    customerFields.hidden = window.QF.authenticationEnabled || Boolean(customer.id);
     customerFields.querySelectorAll('input').forEach(input => {
-      input.required = !customer.id;
+      input.required = !window.QF.authenticationEnabled && !customer.id;
     });
 
     requestForm.addEventListener('submit', startConversation);
@@ -130,7 +135,7 @@
     event.preventDefault();
     const customerFields = document.getElementById('customer-details-fields');
     let customer = getCustomer();
-    if (!customer.id) {
+    if (!window.QF.authenticationEnabled && !customer.id) {
       const name = requestForm.elements.customerName.value.trim();
       const mobile = requestForm.elements.customerMobile.value.replace(/\D/g, '');
       if (!name || !/^[6-9]\d{9}$/.test(mobile)) {
@@ -166,7 +171,7 @@
       const result = await api('/api/messages/conversations', {
         method: 'POST',
         body: JSON.stringify({
-          customerId: customer.id,
+          ...(window.QF.authenticationEnabled ? {} : { customerId: customer.id }),
           providerId: requestForm.dataset.providerId,
           service: requestForm.dataset.service,
           initialMessage: requestForm.elements.problem.value.trim(),
@@ -231,4 +236,13 @@
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? '' : date.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
   }
-})();
+})().catch(error => {
+  console.error('[UI] Customer page could not initialize:', error.message);
+  const feedback = document.getElementById('request-feedback') ||
+    document.getElementById('search-feedback') ||
+    document.getElementById('chat-list');
+  if (feedback) {
+    feedback.textContent = 'QuickFix could not verify your session. Refresh the page or sign in again.';
+    feedback.hidden = false;
+  }
+});

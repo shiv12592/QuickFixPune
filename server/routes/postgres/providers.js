@@ -1,6 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const { pool, normalizeMobile, withTransaction } = require('../../db/pool');
+const { requireProvider } = require('../../middleware/auth');
 
 const router = express.Router();
 
@@ -66,11 +67,14 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-router.get('/:id/dashboard', async (req, res, next) => {
+router.get('/:id/dashboard', requireProvider, async (req, res, next) => {
+  if (req.params.id !== req.auth.publicId) {
+    return res.status(403).json({ success: false, message: 'This provider profile is not yours' });
+  }
   try {
     const result = await pool.query(
-      providerSql(`WHERE ${publicOrLegacyId('pp')}`),
-      [req.params.id]
+      providerSql('WHERE pp.user_id = $1'),
+      [req.auth.userId]
     );
     if (!result.rowCount) {
       return res.status(404).json({ success: false, message: 'Provider not found' });
@@ -96,7 +100,10 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-router.patch('/:id/availability', async (req, res, next) => {
+router.patch('/:id/availability', requireProvider, async (req, res, next) => {
+  if (req.params.id !== req.auth.publicId) {
+    return res.status(403).json({ success: false, message: 'This provider profile is not yours' });
+  }
   const availability = String(req.body.availability || '').toUpperCase();
   if (!['AVAILABLE', 'BUSY', 'OFFLINE'].includes(availability)) {
     return res.status(400).json({
@@ -107,12 +114,12 @@ router.patch('/:id/availability', async (req, res, next) => {
   try {
     const result = await pool.query(
       `UPDATE provider_profiles pp
-       SET availability = $2
+       SET availability = $1
        FROM users u
-       WHERE pp.user_id = u.id AND ${publicOrLegacyId('pp')}
+       WHERE pp.user_id = u.id AND pp.user_id = $2
        RETURNING pp.public_id, u.full_name, pp.service, pp.experience, pp.area,
          pp.pincode, pp.verification_status, pp.availability, pp.created_at`,
-      [req.params.id, availability]
+      [availability, req.auth.userId]
     );
     if (!result.rowCount) {
       return res.status(404).json({ success: false, message: 'Provider not found' });

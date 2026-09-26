@@ -1,6 +1,12 @@
 const express = require('express');
 const crypto = require('crypto');
 const { pool, withTransaction } = require('../../db/pool');
+const {
+  requireAuth,
+  requireOperationalAuth,
+  requireCustomer,
+  requireProvider
+} = require('../../middleware/auth');
 
 const router = express.Router();
 
@@ -152,14 +158,13 @@ async function persistSocketMessage(conversationPublicId, senderType, senderPubl
 
 async function listConversations(req, res, next, userType) {
   try {
-    const publicId = req.params[`${userType.toLowerCase()}Id`];
-    const userId = await findUserId(pool, userType, publicId);
-    if (!userId) {
-      return res.status(404).json({
+    if (req.auth.role !== userType) {
+      return res.status(403).json({
         success: false,
-        message: userType === 'CUSTOMER' ? 'Customer not found' : 'Provider not found'
+        message: 'This account cannot access these conversations'
       });
     }
+    const userId = req.auth.userId;
     const column = userType === 'CUSTOMER' ? 'customer_id' : 'provider_id';
     const result = await pool.query(
       `SELECT c.*, cp.public_id AS customer_public_id,
@@ -190,9 +195,8 @@ async function listConversations(req, res, next, userType) {
   }
 }
 
-router.post('/conversations', async (req, res, next) => {
+router.post('/conversations', requireCustomer, async (req, res, next) => {
   const {
-    customerId,
     providerId,
     service,
     initialMessage,
@@ -219,12 +223,7 @@ router.post('/conversations', async (req, res, next) => {
 
   try {
     const conversation = await withTransaction(async client => {
-      const customerIdResult = await findUserId(client, 'CUSTOMER', customerId);
-      if (!customerIdResult) {
-        const error = new Error('Customer not found');
-        error.status = 404;
-        throw error;
-      }
+      const customerIdResult = req.auth.userId;
       const providerResult = await client.query(
         `SELECT pp.user_id, pp.service, pp.public_id
          FROM provider_profiles pp
@@ -328,93 +327,103 @@ router.post('/conversations', async (req, res, next) => {
   }
 });
 
-router.get('/conversations/customer/:customerId', (req, res, next) =>
+router.get('/conversations/customer/:customerId', requireCustomer, (req, res, next) =>
   listConversations(req, res, next, 'CUSTOMER'));
 
-router.get('/conversations/provider/:providerId', (req, res, next) =>
+router.get('/conversations/provider/:providerId', requireProvider, (req, res, next) =>
   listConversations(req, res, next, 'PROVIDER'));
 
-router.get('/conversations/:conversationId/messages', async (req, res, next) => {
-  const { userType, userId } = req.query;
-  try {
-    const conversation = await findConversation(pool, req.params.conversationId);
-    if (!conversation) {
-      return res.status(404).json({ success: false, message: 'Conversation not found' });
+router.get(
+  '/conversations/:conversationId/messages',
+  [requireAuth, requireOperationalAuth],
+  async (req, res, next) => {
+    try {
+      const conversation = await findConversation(pool, req.params.conversationId);
+      if (!conversation) {
+        return res.status(404).json({ success: false, message: 'Conversation not found' });
+      }
+      if (
+        (req.auth.role === 'CUSTOMER' && req.auth.userId !== conversation.customer_id) ||
+        (req.auth.role === 'PROVIDER' && req.auth.userId !== conversation.provider_id)
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: 'You are not a participant in this conversation'
+        });
+      }
+      return res.json({
+        success: true,
+        conversation: serializeConversation(conversation),
+        messages: await loadMessages(pool, conversation.id)
+      });
+    } catch (error) {
+      return next(error);
     }
-    const participantId = await findUserId(pool, String(userType || '').toUpperCase(), userId);
-    if (
-      !participantId ||
-      (String(userType).toUpperCase() === 'CUSTOMER' && participantId !== conversation.customer_id) ||
-      (String(userType).toUpperCase() === 'PROVIDER' && participantId !== conversation.provider_id)
-    ) {
-      return res.status(403).json({
+  }
+);
+
+router.post(
+  '/conversations/:conversationId/messages',
+  [requireAuth, requireOperationalAuth],
+  async (req, res, next) => {
+    const senderType = req.auth.role;
+    const senderId = req.auth.publicId;
+    const message = String(req.body.message || '').trim();
+    if (!message) {
+      return res.status(400).json({ success: false, message: 'Message cannot be empty' });
+    }
+    if (message.length > 1000) {
+      return res.status(400).json({
         success: false,
-        message: 'You are not a participant in this conversation'
+        message: 'Message cannot exceed 1000 characters'
       });
     }
-    res.json({
-      success: true,
-      conversation: serializeConversation(conversation),
-      messages: await loadMessages(pool, conversation.id)
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.post('/conversations/:conversationId/messages', async (req, res, next) => {
-  const senderType = String(req.body.senderType || '').toUpperCase();
-  const senderId = req.body.senderId;
-  const message = String(req.body.message || '').trim();
-  if (!message) {
-    return res.status(400).json({ success: false, message: 'Message cannot be empty' });
-  }
-  if (message.length > 1000) {
-    return res.status(400).json({ success: false, message: 'Message cannot exceed 1000 characters' });
-  }
-  try {
-    const created = await persistSocketMessage(
-      req.params.conversationId,
-      senderType,
-      senderId,
-      message
-    );
-    res.status(201).json({ success: true, message: created });
-  } catch (error) {
-    if (error.message === 'Conversation not found or closed') error.status = 404;
-    if (error.message === 'You are not a participant in this conversation') error.status = 403;
-    next(error);
-  }
-});
-
-router.post('/conversations/:conversationId/read', async (req, res, next) => {
-  const userType = String(req.body.userType || '').toUpperCase();
-  try {
-    const conversation = await findConversation(pool, req.params.conversationId);
-    if (!conversation) {
-      return res.status(404).json({ success: false, message: 'Conversation not found' });
+    try {
+      const created = await persistSocketMessage(
+        req.params.conversationId,
+        senderType,
+        senderId,
+        message
+      );
+      return res.status(201).json({ success: true, message: created });
+    } catch (error) {
+      if (error.message === 'Conversation not found or closed') error.status = 404;
+      if (error.message === 'You are not a participant in this conversation') error.status = 403;
+      return next(error);
     }
-    const userId = await findUserId(pool, userType, req.body.userId);
-    if (
-      !userId ||
-      (userType === 'CUSTOMER' && userId !== conversation.customer_id) ||
-      (userType === 'PROVIDER' && userId !== conversation.provider_id)
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: 'You are not a participant in this conversation'
-      });
-    }
-    await pool.query(
-      `UPDATE messages SET read_at = now()
-       WHERE conversation_id = $1 AND sender_type <> $2 AND read_at IS NULL`,
-      [conversation.id, userType]
-    );
-    res.json({ success: true, message: 'Messages marked as read' });
-  } catch (error) {
-    next(error);
   }
-});
+);
+
+router.post(
+  '/conversations/:conversationId/read',
+  [requireAuth, requireOperationalAuth],
+  async (req, res, next) => {
+    const userType = req.auth.role;
+    try {
+      const conversation = await findConversation(pool, req.params.conversationId);
+      if (!conversation) {
+        return res.status(404).json({ success: false, message: 'Conversation not found' });
+      }
+      if (
+        (userType === 'CUSTOMER' && req.auth.userId !== conversation.customer_id) ||
+        (userType === 'PROVIDER' && req.auth.userId !== conversation.provider_id)
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: 'You are not a participant in this conversation'
+        });
+      }
+      await pool.query(
+        `UPDATE messages SET read_at = now()
+         WHERE conversation_id = $1 AND sender_type <> $2 AND read_at IS NULL`,
+        [conversation.id, userType]
+      );
+      return res.json({ success: true, message: 'Messages marked as read' });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
 
 module.exports = {
   router,
