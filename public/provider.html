@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Provider dashboard | QuickFix Pune</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-page="provider-dashboard">
+  <header class="topbar">
+    <a class="brand" href="/provider"><span class="brand-mark">Q</span><span>QuickFix <b>Provider</b></span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-menu" aria-label="Open navigation">Menu</button>
+    <nav class="site-menu" id="site-menu" hidden>
+      <a href="/provider">Dashboard</a><a href="/provider-requests.html">Requests</a>
+      <a href="/provider-requests.html">Messages</a><a href="/placeholder.html?page=My%20Profile">My Profile</a>
+      <a href="/provider#availability">Availability</a><a href="/placeholder.html?page=Verification%20Status">Verification Status</a>
+      <a href="/placeholder.html?page=Reviews">Reviews</a><a href="/placeholder.html?page=Help%20%26%20Support">Help &amp; Support</a>
+      <button type="button" class="menu-link" data-logout-provider>Switch provider</button>
+    </nav>
+  </header>
+  <main class="page-wrap">
+    <section class="dashboard-welcome">
+      <div><p class="eyebrow">PROVIDER WORKSPACE</p><h1>Welcome back<span id="provider-greeting">.</span></h1><p id="provider-area" class="muted">Your requests and conversations, together.</p></div>
+      <a class="button button-quiet" href="/provider-requests.html">View requests <span aria-hidden="true">→</span></a>
+    </section>
+
+    <section class="panel identity-panel">
+      <div><h2>Local testing profile</h2><p class="muted">Select the provider ID used by this browser. This development identity is stored locally.</p></div>
+      <form id="provider-identity-form" class="identity-form">
+        <label for="provider-id">Provider ID</label>
+        <input id="provider-id" name="providerId" inputmode="numeric" required>
+        <button class="button button-secondary" type="submit">Load profile</button>
+      </form>
+    </section>
+
+    <div id="provider-error" class="feedback feedback-error" role="alert" hidden></div>
+    <div id="provider-loading" class="loading-state">Loading provider workspace…</div>
+    <section id="provider-dashboard-content" hidden>
+      <div class="provider-profile panel">
+        <div class="avatar" id="provider-avatar">Q</div>
+        <div class="profile-main"><div class="profile-title"><h2 id="provider-name">Provider</h2><span id="verification-badge" class="status-badge"></span></div><p id="provider-summary" class="muted"></p></div>
+        <div id="availability" class="availability-control"><label for="availability-select">Availability</label><select id="availability-select"><option value="AVAILABLE">Available</option><option value="BUSY">Busy</option><option value="OFFLINE">Offline</option></select></div>
+      </div>
+      <div class="metric-grid">
+        <a class="metric-card" href="/provider-requests.html"><span>New requests</span><strong id="new-request-count">0</strong></a>
+        <a class="metric-card" href="/provider-requests.html"><span>Unread messages</span><strong id="unread-count">0</strong></a>
+        <div class="metric-card"><span>Active conversations</span><strong id="active-count">0</strong></div>
+      </div>
+      <section class="dashboard-section">
+        <div class="section-heading"><div><p class="eyebrow">STAY IN THE LOOP</p><h2>Recent requests &amp; chats</h2></div><a class="text-link" href="/provider-requests.html">See all <span aria-hidden="true">→</span></a></div>
+        <div id="recent-conversations" class="stack-list"><div class="loading-state">Loading conversations…</div></div>
+      </section>
+    </section>
+    <p id="provider-feedback" class="feedback" role="status" hidden></p>
+  </main>
+  <footer class="site-footer"><span>QuickFix Pune Provider</span><a href="/customer">Customer marketplace</a></footer>
+  <script src="/js/app.js" defer></script>
+  <script src="/js/provider.js" defer></script>
+</body>
+</html>

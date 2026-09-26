@@ -20,8 +20,41 @@ router.post('/conversations', (req, res) => {
     customerId,
     providerId,
     service,
-    initialMessage
+    initialMessage,
+    preferredVisitTime
   } = req.body;
+
+  const cleanMessage = String(initialMessage || '').trim();
+  const cleanPreferredVisitTime = String(preferredVisitTime || '').trim();
+  const requestedService = String(service || '').trim();
+
+  if (!cleanMessage) {
+    return res.status(400).json({
+      success: false,
+      message: 'A request description is required'
+    });
+  }
+
+  if (cleanMessage.length > 1000) {
+    return res.status(400).json({
+      success: false,
+      message: 'Message cannot exceed 1000 characters'
+    });
+  }
+
+  if (cleanPreferredVisitTime.length > 100) {
+    return res.status(400).json({
+      success: false,
+      message: 'Preferred visit time cannot exceed 100 characters'
+    });
+  }
+
+  if (requestedService.length > 100) {
+    return res.status(400).json({
+      success: false,
+      message: 'Service name cannot exceed 100 characters'
+    });
+  }
 
   const db = readDatabase();
 
@@ -49,6 +82,16 @@ router.post('/conversations', (req, res) => {
     });
   }
 
+  if (
+    requestedService &&
+    requestedService.toLowerCase() !== String(provider.service).trim().toLowerCase()
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: 'The selected provider does not offer this service'
+    });
+  }
+
   let conversation = db.conversations.find(
     item =>
       String(item.customer_id) === String(customer.id) &&
@@ -62,8 +105,11 @@ router.post('/conversations', (req, res) => {
       reference: generateConversationReference(),
       customer_id: customer.id,
       provider_id: provider.id,
-      service: String(service || provider.service).trim(),
+      service: provider.service,
       status: 'OPEN',
+      request_status: 'PENDING',
+      request_description: cleanMessage,
+      preferred_visit_time: cleanPreferredVisitTime,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -71,13 +117,30 @@ router.post('/conversations', (req, res) => {
     db.conversations.push(conversation);
   }
 
-  if (initialMessage && String(initialMessage).trim()) {
+  const request = {
+    id: generateId(),
+    conversation_id: conversation.id,
+    customer_id: customer.id,
+    provider_id: provider.id,
+    service: conversation.service,
+    description: cleanMessage,
+    preferred_visit_time: cleanPreferredVisitTime,
+    status: 'PENDING',
+    created_at: new Date().toISOString()
+  };
+  db.service_requests.push(request);
+  conversation.request_id = request.id;
+  conversation.request_status = 'PENDING';
+  conversation.request_description = cleanMessage;
+  conversation.preferred_visit_time = cleanPreferredVisitTime;
+
+  if (cleanMessage) {
     const message = {
       id: generateId(),
       conversation_id: conversation.id,
       sender_type: 'CUSTOMER',
       sender_id: customer.id,
-      message: String(initialMessage).trim(),
+      message: cleanMessage,
       read: false,
       created_at: new Date().toISOString()
     };
@@ -99,6 +162,16 @@ router.post('/conversations', (req, res) => {
  */
 router.get('/conversations/customer/:customerId', (req, res) => {
   const db = readDatabase();
+  const customer = db.customers.find(
+    item => String(item.id) === String(req.params.customerId)
+  );
+
+  if (!customer) {
+    return res.status(404).json({
+      success: false,
+      message: 'Customer not found'
+    });
+  }
 
   const conversations = db.conversations
     .filter(
@@ -128,10 +201,14 @@ router.get('/conversations/customer/:customerId', (req, res) => {
               id: provider.id,
               name: provider.name,
               service: provider.service,
-              area: provider.area
+              area: provider.area,
+              availability: provider.availability || 'AVAILABLE'
             }
           : null,
-        messages
+        messages,
+        unread_count: messages.filter(
+          message => message.sender_type === 'PROVIDER' && !message.read
+        ).length
       };
     });
 
@@ -146,6 +223,16 @@ router.get('/conversations/customer/:customerId', (req, res) => {
  */
 router.get('/conversations/provider/:providerId', (req, res) => {
   const db = readDatabase();
+  const provider = db.providers.find(
+    item => String(item.id) === String(req.params.providerId)
+  );
+
+  if (!provider) {
+    return res.status(404).json({
+      success: false,
+      message: 'Provider not found'
+    });
+  }
 
   const conversations = db.conversations
     .filter(
@@ -176,7 +263,10 @@ router.get('/conversations/provider/:providerId', (req, res) => {
               name: customer.name
             }
           : null,
-        messages
+        messages,
+        unread_count: messages.filter(
+          message => message.sender_type === 'CUSTOMER' && !message.read
+        ).length
       };
     });
 
@@ -190,6 +280,7 @@ router.get('/conversations/provider/:providerId', (req, res) => {
  * Get messages for one conversation.
  */
 router.get('/conversations/:conversationId/messages', (req, res) => {
+  const { userType, userId } = req.query;
   const db = readDatabase();
 
   const conversation = db.conversations.find(
@@ -201,6 +292,13 @@ router.get('/conversations/:conversationId/messages', (req, res) => {
     return res.status(404).json({
       success: false,
       message: 'Conversation not found'
+    });
+  }
+
+  if (!isConversationParticipant(conversation, userType, userId)) {
+    return res.status(403).json({
+      success: false,
+      message: 'You are not a participant in this conversation'
     });
   }
 
@@ -217,7 +315,27 @@ router.get('/conversations/:conversationId/messages', (req, res) => {
 
   res.json({
     success: true,
-    conversation,
+    conversation: {
+      ...conversation,
+      provider: (() => {
+        const provider = db.providers.find(
+          item => String(item.id) === String(conversation.provider_id)
+        );
+        return provider ? {
+          id: provider.id,
+          name: provider.name,
+          service: provider.service,
+          area: provider.area,
+          availability: provider.availability || 'AVAILABLE'
+        } : null;
+      })(),
+      customer: (() => {
+        const customer = db.customers.find(
+          item => String(item.id) === String(conversation.customer_id)
+        );
+        return customer ? { id: customer.id, name: customer.name } : null;
+      })()
+    },
     messages
   });
 });
@@ -266,15 +384,7 @@ router.post('/conversations/:conversationId/messages', (req, res) => {
   const normalizedSenderType =
     String(senderType || '').toUpperCase();
 
-  const isCustomer =
-    normalizedSenderType === 'CUSTOMER' &&
-    String(conversation.customer_id) === String(senderId);
-
-  const isProvider =
-    normalizedSenderType === 'PROVIDER' &&
-    String(conversation.provider_id) === String(senderId);
-
-  if (!isCustomer && !isProvider) {
+  if (!isConversationParticipant(conversation, normalizedSenderType, senderId)) {
     return res.status(403).json({
       success: false,
       message: 'You are not a participant in this conversation'
@@ -330,14 +440,7 @@ router.post('/conversations/:conversationId/read', (req, res) => {
     String(userType || '').toUpperCase();
 
   const validParticipant =
-    (
-      normalizedType === 'CUSTOMER' &&
-      String(conversation.customer_id) === String(userId)
-    ) ||
-    (
-      normalizedType === 'PROVIDER' &&
-      String(conversation.provider_id) === String(userId)
-    );
+    isConversationParticipant(conversation, normalizedType, userId);
 
   if (!validParticipant) {
     return res.status(403).json({
@@ -364,5 +467,16 @@ router.post('/conversations/:conversationId/read', (req, res) => {
     message: 'Messages marked as read'
   });
 });
+
+function isConversationParticipant(conversation, userType, userId) {
+  const normalizedType = String(userType || '').toUpperCase();
+
+  return (
+    (normalizedType === 'CUSTOMER' &&
+      String(conversation.customer_id) === String(userId)) ||
+    (normalizedType === 'PROVIDER' &&
+      String(conversation.provider_id) === String(userId))
+  );
+}
 
 module.exports = router;

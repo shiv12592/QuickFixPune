@@ -13,7 +13,10 @@ if (!fs.existsSync(databaseFile)) {
     providers: [],
     customers: [],
     leads: [],
-    otp_sessions: []
+    otp_sessions: [],
+    conversations: [],
+    messages: [],
+    service_requests: []
   };
 
   fs.writeFileSync(
@@ -23,7 +26,45 @@ if (!fs.existsSync(databaseFile)) {
 }
 
 function readDatabase() {
-  return JSON.parse(fs.readFileSync(databaseFile, 'utf8'));
+  const data = JSON.parse(fs.readFileSync(databaseFile, 'utf8'));
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('The QuickFix database must contain a JSON object');
+  }
+
+  let changed = false;
+
+  for (const collection of [
+    'providers',
+    'customers',
+    'leads',
+    'otp_sessions',
+    'conversations',
+    'messages',
+    'service_requests'
+  ]) {
+    if (!Object.prototype.hasOwnProperty.call(data, collection)) {
+      data[collection] = [];
+      changed = true;
+    } else if (!Array.isArray(data[collection])) {
+      throw new Error(`Database collection "${collection}" must be an array`);
+    }
+  }
+
+  for (const provider of data.providers) {
+    if (
+      provider.verification_status === 'VERIFIED' &&
+      !provider.availability
+    ) {
+      provider.availability = 'AVAILABLE';
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    writeDatabase(data);
+  }
+
+  return data;
 }
 
 function writeDatabase(data) {

@@ -1,297 +1,109 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <title>QuickFix Pune - Local Service Finder</title>
-
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#123a35">
+  <title>QuickFix Pune | Local help, made simple</title>
   <link rel="stylesheet" href="/css/style.css">
-
-  <style>
-    body {
-      background: #f4f6f8;
-    }
-
-    .search-card,
-    .provider-card {
-      background: white;
-      border-radius: 14px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    }
-
-    .search-card {
-      padding: 22px;
-      margin-bottom: 20px;
-    }
-
-    .provider-card {
-      padding: 18px;
-      margin-bottom: 14px;
-      border-left: 4px solid #2563eb;
-    }
-
-    .provider-card h3 {
-      margin-bottom: 8px;
-    }
-
-    .provider-info {
-      color: #475569;
-      font-size: 14px;
-      line-height: 1.7;
-      margin-bottom: 12px;
-    }
-
-    .badge {
-      display: inline-block;
-      background: #dcfce7;
-      color: #166534;
-      padding: 3px 8px;
-      border-radius: 5px;
-      font-size: 12px;
-      margin-left: 5px;
-    }
-
-    .btn-unlock {
-      width: 100%;
-      padding: 12px;
-      border: none;
-      border-radius: 8px;
-      background: #16a34a;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    .btn-unlock:hover {
-      background: #15803d;
-    }
-
-    .empty {
-      background: white;
-      padding: 25px;
-      border-radius: 12px;
-      text-align: center;
-      color: #64748b;
-    }
-
-    .provider-link {
-      display: block;
-      text-align: center;
-      margin-top: 20px;
-      color: #2563eb;
-      text-decoration: none;
-      font-weight: 600;
-    }
-
-    .loading {
-      text-align: center;
-      padding: 20px;
-      color: #64748b;
-    }
-  </style>
 </head>
-
-<body>
-
-  <div class="page-container">
-
-    <div class="header">
-      <h1>QuickFix Pune</h1>
-      <p>Find Nearby Verified Service Providers</p>
-    </div>
-
-    <div class="search-card">
-
-      <div class="form-group">
-        <label for="service">Select Needed Service</label>
-
-        <select id="service">
-          <option value="">-- Choose Service --</option>
-          <option value="Plumber">Plumber</option>
-          <option value="Electrician">Electrician</option>
-          <option value="Welder">Welder</option>
-          <option value="Carpenter">Carpenter</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="pincode">Enter Your Pincode</label>
-
-        <input
-          type="text"
-          id="pincode"
-          maxlength="6"
-          placeholder="e.g. 411057"
-        >
-      </div>
-
-      <button
-        class="btn-search"
-        onclick="searchProviders()"
-      >
-        Find Nearby Services
-      </button>
-
-    </div>
-
-    <div id="results"></div>
-
-    <a
-      href="/provider-register.html"
-      class="provider-link"
-    >
-      Are you a service provider? Register here
+<body data-app="customer">
+  <header class="topbar">
+    <a class="brand" href="/customer" aria-label="QuickFix Pune home">
+      <span class="brand-mark">Q</span>
+      <span>QuickFix <b>Pune</b></span>
     </a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-menu" aria-label="Open navigation">Menu</button>
+    <nav class="site-menu" id="site-menu" hidden>
+      <a href="/customer">Home</a>
+      <a href="/customer-chats.html">My Chats</a>
+      <a href="/placeholder.html?page=My%20Requests">My Requests</a>
+      <a href="/placeholder.html?page=Profile">Profile</a>
+      <a href="/placeholder.html?page=Help%20%26%20Support">Help &amp; Support</a>
+      <a href="/placeholder.html?page=Terms">Terms</a>
+      <a href="/placeholder.html?page=Privacy">Privacy</a>
+      <a href="/placeholder.html?page=About">About</a>
+      <a href="/provider-register.html">Register as Provider</a>
+      <a href="/provider">Provider portal</a>
+    </nav>
+  </header>
 
-  </div>
+  <main class="page-wrap">
+    <section class="hero">
+      <p class="eyebrow">PUNE'S LOCAL SERVICE MARKETPLACE</p>
+      <h1>Find trusted help<br>for your home.</h1>
+      <p class="hero-copy">Tell us what you need. Connect directly with verified local professionals.</p>
+    </section>
 
-
-  <script>
-
-    async function searchProviders() {
-
-      const service =
-        document.getElementById("service").value;
-
-      const pincode =
-        document.getElementById("pincode").value.trim();
-
-      const results =
-        document.getElementById("results");
-
-      if (!service || !pincode) {
-
-        alert(
-          "Please select a service and enter your pincode."
-        );
-
-        return;
-      }
-
-      if (!/^[0-9]{6}$/.test(pincode)) {
-
-        alert(
-          "Please enter a valid 6 digit pincode."
-        );
-
-        return;
-      }
-
-      results.innerHTML = `
-        <div class="loading">
-          Finding nearby providers...
+    <section class="panel search-panel" aria-labelledby="search-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">GET STARTED</p>
+          <h2 id="search-title">What can we help with?</h2>
         </div>
-      `;
-
-      try {
-
-        const response = await fetch(
-          `/api/providers?service=${encodeURIComponent(service)}&pincode=${encodeURIComponent(pincode)}`
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            data.message || "Unable to search providers."
-          );
-        }
-
-        if (data.providers.length === 0) {
-
-          results.innerHTML = `
-            <div class="empty">
-              <h3>No providers found</h3>
-
-              <p>
-                We don't currently have a verified
-                ${service} in ${pincode}.
-              </p>
-            </div>
-          `;
-
-          return;
-        }
-
-        results.innerHTML = data.providers
-          .map(provider => createProviderCard(provider))
-          .join("");
-
-      } catch (error) {
-
-        results.innerHTML = `
-          <div class="empty">
-            <h3>Something went wrong</h3>
-            <p>${error.message}</p>
-          </div>
-        `;
-      }
-    }
-
-
-    function createProviderCard(provider) {
-
-      return `
-        <div class="provider-card">
-
-          <h3>
-            ${escapeHtml(provider.name)}
-
-            <span class="badge">
-              ✓ Verified
-            </span>
-          </h3>
-
-          <div class="provider-info">
-
-            🛠️ Service:
-            <strong>${escapeHtml(provider.service)}</strong>
-            <br>
-
-            📍 Area:
-            <strong>${escapeHtml(provider.area)}</strong>
-            <br>
-
-            📮 Pincode:
-            <strong>${escapeHtml(provider.pincode)}</strong>
-            <br>
-
-            💼 Experience:
-            <strong>${provider.experience} years</strong>
-
-          </div>
-
-          <button
-            class="btn-unlock"
-            onclick="selectProvider(${provider.id})"
-          >
-            Get Contact Details - ₹20
-          </button>
-
+        <span class="step-label">01 <i>/ 02</i></span>
+      </div>
+      <form id="provider-search" class="search-form">
+        <div class="field">
+          <label for="service">Choose a service</label>
+          <select id="service" name="service" required>
+            <option value="">Select a service</option>
+            <option>Plumber</option>
+            <option>Electrician</option>
+            <option>AC Repair</option>
+            <option>Carpenter</option>
+            <option>Painter</option>
+            <option>Appliance Repair</option>
+            <option>Cleaning</option>
+            <option>Pest Control</option>
+            <option>Other</option>
+          </select>
         </div>
-      `;
-    }
+        <div class="field">
+          <label for="area">Area <span class="optional">or pincode</span></label>
+          <input id="area" name="area" type="text" maxlength="80" placeholder="e.g. Hinjewadi">
+        </div>
+        <div class="field">
+          <label for="pincode">Pincode</label>
+          <input id="pincode" name="pincode" type="text" inputmode="numeric" maxlength="6" placeholder="e.g. 411057">
+        </div>
+        <button class="button button-primary search-button" type="submit">Find providers <span aria-hidden="true">→</span></button>
+      </form>
+      <p id="search-feedback" class="form-hint" role="status" aria-live="polite">Enter an area or a 6-digit pincode to find nearby professionals.</p>
+      <div class="popular-services" aria-label="Popular service categories">
+        <span>Popular:</span>
+        <button type="button" data-service="Plumber">Plumber</button>
+        <button type="button" data-service="Electrician">Electrician</button>
+        <button type="button" data-service="AC Repair">AC repair</button>
+        <button type="button" data-service="Carpenter">Carpenter</button>
+      </div>
+    </section>
 
+    <section class="results-section" aria-live="polite">
+      <div class="section-heading results-heading">
+        <div>
+          <p class="eyebrow">LOCAL PROFESSIONALS</p>
+          <h2 id="results-title">Popular services</h2>
+        </div>
+      </div>
+      <div id="results" class="provider-grid">
+        <div class="empty-state">
+          <span class="empty-icon" aria-hidden="true">⌕</span>
+          <h3>Choose a service and location</h3>
+          <p>We’ll show verified professionals serving your neighbourhood.</p>
+        </div>
+      </div>
+    </section>
 
-    function selectProvider(providerId) {
+    <section class="trust-strip">
+      <span class="trust-icon" aria-hidden="true">✓</span>
+      <div><strong>Verified local providers</strong><p>Your conversations and requests stay in one place.</p></div>
+      <a href="/customer-chats.html">View my chats <span aria-hidden="true">→</span></a>
+    </section>
+  </main>
 
-      window.location.href =
-        `/customer-details.html?providerId=${providerId}`;
-    }
-
-
-    function escapeHtml(value) {
-
-      return String(value)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-    }
-
-  </script>
-
+  <footer class="site-footer"><span>QuickFix Pune</span><span>Connecting Pune, one fix at a time.</span></footer>
+  <script src="/js/app.js" defer></script>
+  <script src="/js/customer.js" defer></script>
 </body>
 </html>

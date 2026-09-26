@@ -12,6 +12,9 @@ function cleanProvider(provider) {
     area: provider.area,
     pincode: provider.pincode,
     verification_status: provider.verification_status,
+    availability: provider.availability || (
+      provider.verification_status === 'VERIFIED' ? 'AVAILABLE' : 'OFFLINE'
+    ),
     created_at: provider.created_at
   };
 }
@@ -94,6 +97,57 @@ router.get('/:id', (req, res) => {
   });
 });
 
+router.get('/:id/dashboard', (req, res) => {
+  const db = readDatabase();
+  const provider = db.providers.find(
+    item => String(item.id) === String(req.params.id)
+  );
+
+  if (!provider) {
+    return res.status(404).json({
+      success: false,
+      message: 'Provider not found'
+    });
+  }
+
+  res.json({
+    success: true,
+    provider: cleanProvider(provider)
+  });
+});
+
+router.patch('/:id/availability', (req, res) => {
+  const availability = String(req.body.availability || '').toUpperCase();
+  const allowedAvailability = ['AVAILABLE', 'BUSY', 'OFFLINE'];
+
+  if (!allowedAvailability.includes(availability)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Availability must be AVAILABLE, BUSY or OFFLINE'
+    });
+  }
+
+  const db = readDatabase();
+  const provider = db.providers.find(
+    item => String(item.id) === String(req.params.id)
+  );
+
+  if (!provider) {
+    return res.status(404).json({
+      success: false,
+      message: 'Provider not found'
+    });
+  }
+
+  provider.availability = availability;
+  writeDatabase(db);
+
+  res.json({
+    success: true,
+    provider: cleanProvider(provider)
+  });
+});
+
 /*
  * Provider registration.
  */
@@ -124,6 +178,18 @@ router.post('/register', (req, res) => {
     });
   }
 
+  if (
+    cleanName.length > 100 ||
+    cleanService.length > 100 ||
+    cleanAddress.length > 250 ||
+    cleanArea.length > 80
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: 'Name, service, address or area is too long'
+    });
+  }
+
   if (!/^[6-9]\d{9}$/.test(cleanMobile)) {
     return res.status(400).json({
       success: false,
@@ -138,10 +204,14 @@ router.post('/register', (req, res) => {
     });
   }
 
-  if (!Number.isFinite(cleanExperience) || cleanExperience < 0) {
+  if (
+    !Number.isFinite(cleanExperience) ||
+    cleanExperience < 0 ||
+    cleanExperience > 60
+  ) {
     return res.status(400).json({
       success: false,
-      message: 'Experience must be a valid number'
+      message: 'Experience must be a number between 0 and 60'
     });
   }
 
@@ -168,6 +238,7 @@ router.post('/register', (req, res) => {
     area: cleanArea,
     pincode: cleanPincode,
     verification_status: 'PENDING',
+    availability: 'OFFLINE',
     created_at: new Date().toISOString()
   };
 

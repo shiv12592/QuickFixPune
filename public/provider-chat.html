@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Customer chat | QuickFix Pune</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-user-type="PROVIDER">
+  <header class="topbar">
+    <a class="brand" href="/provider"><span class="brand-mark">Q</span><span>QuickFix <b>Provider</b></span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-menu" aria-label="Open navigation">Menu</button>
+    <nav class="site-menu" id="site-menu" hidden><a href="/provider">Dashboard</a><a href="/provider-requests.html">Requests &amp; messages</a><a href="/customer">Customer marketplace</a></nav>
+  </header>
+  <main class="page-wrap narrow-wrap">
+    <a class="back-link" href="/provider-requests.html">← Requests &amp; messages</a>
+    <section class="panel chat-panel">
+      <header class="chat-header"><div><p class="eyebrow">CUSTOMER CONVERSATION</p><h1 id="chat-title">Loading chat…</h1><p id="chat-subtitle" class="muted"></p></div><span id="chat-status" class="availability-badge" hidden></span></header>
+      <div id="chat-error" class="feedback feedback-error" role="alert" hidden></div>
+      <div id="typing-indicator" class="typing-indicator" aria-live="polite" hidden>Customer is typing…</div>
+      <ol id="messages" class="message-list" aria-live="polite"><li class="loading-state">Loading messages…</li></ol>
+      <form id="message-form" class="message-form"><label class="visually-hidden" for="message-input">Your message</label><textarea id="message-input" rows="1" maxlength="1000" placeholder="Write a reply…" required></textarea><button class="button button-primary" type="submit">Send</button></form>
+      <p class="field-note">Messages are limited to 1000 characters.</p>
+    </section>
+  </main>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/app.js" defer></script>
+  <script src="/js/chat.js" defer></script>
+</body>
+</html>

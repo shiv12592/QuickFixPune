@@ -25,6 +25,13 @@ router.post('/register', (req, res) => {
     });
   }
 
+  if (cleanName.length > 100) {
+    return res.status(400).json({
+      success: false,
+      message: 'Customer name cannot exceed 100 characters'
+    });
+  }
+
   if (!/^[6-9]\d{9}$/.test(cleanMobile)) {
     return res.status(400).json({
       success: false,

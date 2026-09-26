@@ -6,7 +6,7 @@ const { Server } = require('socket.io');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 require('./database');
 
@@ -25,7 +25,19 @@ app.use((req, res, next) => {
   next();
 });
 
+app.get('/providers.html', (req, res) => {
+  res.redirect('/customer');
+});
+
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+app.get('/customer', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+});
+
+app.get('/provider', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'provider.html'));
+});
 
 const providerRoutes = require('./routes/providers');
 const customerRoutes = require('./routes/customers');
