@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Register as Service Provider - QuickFix Pune</title>
+
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+
+  <div class="page-container">
+
+    <div class="header">
+      <h1>QuickFix Pune</h1>
+      <p>Register as a Local Service Provider</p>
+    </div>
+
+    <div class="form-card">
+
+      <h2>Provider Registration</h2>
+
+      <p class="form-description">
+        Register your service and get connected with customers near you.
+      </p>
+
+      <form id="providerForm">
+
+        <div class="form-group">
+          <label for="name">Full Name *</label>
+
+          <input
+            type="text"
+            id="name"
+            placeholder="Enter your full name"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="mobile">Mobile Number *</label>
+
+          <input
+            type="tel"
+            id="mobile"
+            placeholder="10 digit mobile number"
+            maxlength="10"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="service">Service *</label>
+
+          <select id="service" required>
+            <option value="">-- Select Service --</option>
+            <option value="Plumber">Plumber</option>
+            <option value="Electrician">Electrician</option>
+            <option value="Welder">Welder</option>
+            <option value="Carpenter">Carpenter</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="experience">Experience (Years)</label>
+
+          <input
+            type="number"
+            id="experience"
+            min="0"
+            max="60"
+            placeholder="e.g. 8"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="address">Address</label>
+
+          <textarea
+            id="address"
+            placeholder="Enter your address"
+            rows="3"
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="area">Area *</label>
+
+          <input
+            type="text"
+            id="area"
+            placeholder="e.g. Hinjewadi"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="pincode">Pincode *</label>
+
+          <input
+            type="text"
+            id="pincode"
+            placeholder="e.g. 411057"
+            maxlength="6"
+            required
+          >
+        </div>
+
+        <button
+          type="submit"
+          class="btn-search"
+          id="registerButton"
+        >
+          Register as Provider
+        </button>
+
+      </form>
+
+      <div id="message"></div>
+
+    </div>
+
+  </div>
+
+  <script>
+
+    const form = document.getElementById("providerForm");
+    const message = document.getElementById("message");
+    const registerButton = document.getElementById("registerButton");
+
+    form.addEventListener("submit", async function(event) {
+
+      event.preventDefault();
+
+      const mobile =
+        document.getElementById("mobile").value.trim();
+
+      const pincode =
+        document.getElementById("pincode").value.trim();
+
+      if (!/^[0-9]{10}$/.test(mobile)) {
+
+        showMessage(
+          "Please enter a valid 10 digit mobile number.",
+          "error"
+        );
+
+        return;
+      }
+
+      if (!/^[0-9]{6}$/.test(pincode)) {
+
+        showMessage(
+          "Please enter a valid 6 digit pincode.",
+          "error"
+        );
+
+        return;
+      }
+
+      const providerData = {
+
+        name:
+          document.getElementById("name").value.trim(),
+
+        mobile,
+
+        service:
+          document.getElementById("service").value,
+
+        experience:
+          document.getElementById("experience").value,
+
+        address:
+          document.getElementById("address").value.trim(),
+
+        area:
+          document.getElementById("area").value.trim(),
+
+        pincode
+
+      };
+
+      registerButton.disabled = true;
+      registerButton.textContent = "Registering...";
+
+      try {
+
+        const response = await fetch(
+          "/api/providers/register",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify(providerData)
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.message);
+        }
+
+        showMessage(
+          "Registration successful! Your profile is pending verification.",
+          "success"
+        );
+
+        form.reset();
+
+      } catch (error) {
+
+        showMessage(
+          error.message || "Registration failed. Please try again.",
+          "error"
+        );
+
+      } finally {
+
+        registerButton.disabled = false;
+        registerButton.textContent = "Register as Provider";
+
+      }
+
+    });
+
+    function showMessage(text, type) {
+
+      message.textContent = text;
+
+      message.className = type;
+
+    }
+
+  </script>
+
+</body>
+</html>
