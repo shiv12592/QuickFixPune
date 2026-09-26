@@ -4,17 +4,27 @@
   "main": "index.js",
   "scripts": {
     "start": "node server/server.js",
-    "dev": "nodemon server/server.js"
+    "dev": "nodemon server/server.js",
+    "db:migrate": "node-pg-migrate up --envPath .env",
+    "db:rollback": "node-pg-migrate down --envPath .env",
+    "db:import-json": "node server/scripts/import-json.js",
+    "db:import-json:dry-run": "node server/scripts/import-json.js --dry-run",
+    "test:json": "node server/scripts/test-json.js",
+    "test:postgres": "node server/scripts/test-postgres.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "dotenv": "^18.0.4",
     "express": "^5.2.1",
+    "pg": "^8.23.0",
     "socket.io": "^4.8.4"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "node-pg-migrate": "^9.0.0",
+    "nodemon": "^3.1.14",
+    "socket.io-client": "^4.8.4"
   }
 }

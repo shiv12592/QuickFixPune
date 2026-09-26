@@ -1,11 +1,16 @@
 const fs = require('fs');
 const path = require('path');
 
-const databaseDirectory = path.join(__dirname, '..', 'database');
-const databaseFile = path.join(databaseDirectory, 'quickfix.json');
+const databaseFile = process.env.QUICKFIX_DATABASE_FILE ||
+  path.join(__dirname, '..', 'database', 'quickfix.json');
+const databaseDirectory = path.dirname(databaseFile);
 
 if (!fs.existsSync(databaseDirectory)) {
   fs.mkdirSync(databaseDirectory, { recursive: true });
+}
+
+if (!fs.existsSync(path.dirname(databaseFile))) {
+  fs.mkdirSync(path.dirname(databaseFile), { recursive: true });
 }
 
 if (!fs.existsSync(databaseFile)) {
