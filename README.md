@@ -1,7 +1,9 @@
-# QuickFix Pune
+# QuickFix
 
-QuickFix Pune is a lightweight Express, HTML, CSS, JavaScript and Socket.IO
-prototype for connecting Pune customers with local service providers.
+QuickFix is a lightweight Express, HTML, CSS, JavaScript and Socket.IO
+prototype for connecting customers with local service providers. Pune is the
+initial/test service area, not a permanent product boundary; multi-city support
+is not yet modeled or configurable in the application.
 
 ## Run locally
 

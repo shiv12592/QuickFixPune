@@ -1,6 +1,6 @@
 # Phase 2 Authentication Status
 
-## Completed Automatically
+## COMPLETED
 
 - Added a versioned Phase 2 migration extending the existing OTP and session
   tables with account roles, provider metadata, request-IP hashes, and active
@@ -32,8 +32,9 @@
   instructions. No service was deployed.
 - Added authentication unit tests and extended `test:postgres` to exercise OTP,
   sessions, ownership, sockets, privacy, read/unread, and schema constraints.
+- No Phase 3 features were added. Payments and wallet remain paused.
 
-## Manual Setup Required
+## PENDING MANUAL
 
 ### 1. Apply the Phase 2 database migration
 
@@ -125,7 +126,7 @@ login and authenticated WebSocket reconnect work there.
 **If it fails:** Send the public URL and sanitized browser/network or Render
 logs.
 
-## Tests Passed
+## VERIFIED
 
 Record only checks actually run in this worktree:
 
@@ -144,7 +145,7 @@ data checks, conversation ownership, Socket.IO session/room authorization,
 read state, provider availability, foreign keys, and booking overlap coverage.
 It is not described as passed unless it runs against PostgreSQL.
 
-## Tests Blocked
+## BLOCKED
 
 - `npm run db:migrate` and `npm run test:postgres` against Supabase: blocked
   until `DATABASE_URL` is configured in the local ignored `.env`.
@@ -153,7 +154,7 @@ It is not described as passed unless it runs against PostgreSQL.
 - Render deploy, HTTPS, and production WSS smoke tests: not run; no Render
   service or production credentials are available to this worktree.
 
-## Security Validation
+## Security validation
 
 - Production mode fails startup without PostgreSQL, a valid HTTPS
   `APP_BASE_URL`, a 32-byte-or-longer `SESSION_SECRET`, and real provider
@@ -189,7 +190,7 @@ It is not described as passed unless it runs against PostgreSQL.
 - [ ] Keep one Render instance while the per-IP verification limiter is
       process-local; use shared storage before scaling.
 
-## Phase 3 Prerequisites
+## NEXT PHASE
 
 - Supabase Phase 2 migration and the full PostgreSQL integration suite pass.
 - Real OTP send/verify has been tested with the selected provider and an
@@ -201,3 +202,6 @@ It is not described as passed unless it runs against PostgreSQL.
   procedures have been verified.
 - Phase 3 remains unstarted. Payments/wallet, voice messages, booking slots,
   scheduling, reviews, and an admin portal are not included in Phase 2.
+- City selection and multi-city service-area modeling are not implemented;
+  Pune remains the initial/test data area and must not be treated as the
+  permanent product boundary.
