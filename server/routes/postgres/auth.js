@@ -288,7 +288,7 @@ router.post('/verify-otp', async (req, res, next) => {
         const attempts = current.attempts + 1;
         await client.query(
           `UPDATE otp_challenges
-           SET attempts = $2, consumed_at = CASE WHEN $2 >= $3 THEN now() ELSE consumed_at END,
+           SET attempts = $2::smallint, consumed_at = CASE WHEN $2::smallint >= $3::smallint THEN now() ELSE consumed_at END,
                updated_at = now()
            WHERE id = $1`,
           [current.id, attempts, OTP_MAX_ATTEMPTS]
